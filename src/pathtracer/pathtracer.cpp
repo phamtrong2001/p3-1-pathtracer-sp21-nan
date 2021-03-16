@@ -181,9 +181,17 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
 
   int num_samples = ns_aa;          // total samples to evaluate
   Vector2D origin = Vector2D(x, y); // bottom left corner of the pixel
+  Vector3D sample = Vector3D(0,0,0);
+    for(int ii=0; ii<num_samples; ii++){
+        Vector2D sampleLoc = origin + gridSampler->get_sample();
+        Vector3D pathColor = est_radiance_global_illumination(camera->generate_ray(sampleLoc.x/sampleBuffer.w, sampleLoc.y/sampleBuffer.h));
+        sample = sample + pathColor*1/num_samples;
+    }
+    
+  
 
 
-  sampleBuffer.update_pixel(Vector3D(0.2, 1.0, 0.8), x, y);
+  sampleBuffer.update_pixel(sample, x, y);
   sampleCountBuffer[x + y * sampleBuffer.w] = num_samples;
 
 
