@@ -61,15 +61,10 @@ bool Sphere::intersect(const Ray &r, Intersection *i) const {
             i->primitive = this;
             i->bsdf = get_bsdf();
             r.max_t = t;
+            return true;
         }
-        return true;
     }
     return false;
-    
-
-
-
-  return true;
 }
 
 void Sphere::draw(const Color &c, float alpha) const {
