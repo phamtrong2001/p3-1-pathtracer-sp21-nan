@@ -34,12 +34,12 @@ bool BBox::intersect(const Ray& r, double& t0, double& t1) const {
 //    }
 
     if( mintx<=maxty && minty <= maxtx){
-        float mintxy = (mintx > minty ? mintx : minty);
-        float maxtxy = (maxtx < maxty ? maxtx : maxty);
-        if( mintxy<=maxtz && mintz <= maxtxy){
-            float minbt = (mintxy > mintz ? mintxy : mintz);
-            float maxbt = (maxtxy < maxtz ? maxtxy : maxtz);
-            if( minbt<=r.max_t && r.min_t <= maxbt){
+        float mint = (mintx > minty ? mintx : minty);
+        float maxt = (maxtx < maxty ? maxtx : maxty);
+        if( mint<=maxtz && mintz <= maxt){
+            mint = (mint > mintz ? mint : mintz);
+            maxt = (maxt < maxtz ? maxt : maxtz);
+            if( mint<=r.max_t && r.min_t <= maxt){
                 return true;
             }
         }

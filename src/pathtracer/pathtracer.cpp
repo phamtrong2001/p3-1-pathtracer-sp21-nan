@@ -110,25 +110,43 @@ PathTracer::estimate_direct_lighting_importance(const Ray &r,
   const Vector3D w_out = w2o * (-r.d);
   Vector3D L_out;
   
-    for(auto l = scene->lights.begin(); l!=scene->lights.end();l++){
-        if((*l)->is_delta_light()){
-            Vector3D *w_i;
-            double *distToLight;
-            double *pdf;
-            (*l)->sample_L(hit_p, w_i, distToLight, pdf);
+    for (auto& l : scene->lights){
+        if(l->is_delta_light()){
+            Vector3D w_i;
+            double distToLight;
+            double pdf;
+            Vector3D illum = l->sample_L(hit_p, &w_i, &distToLight, &pdf);
+            Vector3D object_w_i = w2o*w_i;
+            if(object_w_i.z>0){
+                Ray ray_out = Ray(hit_p, w_i,distToLight-EPS_F);
+                ray_out.min_t = EPS_F;
+                Intersection light;
+                if(!bvh->intersect(ray_out, &light)){
+                        L_out += object_w_i.z*illum*isect.bsdf->f(w_out,object_w_i)/pdf;
+                }
+            }
         }
         else{
             for(int ii=0; ii<ns_area_light; ii++){
-                Vector3D *w_i;
-                double *distToLight;
-                double *pdf;
-                (*l)->sample_L(hit_p, w_i, distToLight, pdf);
+                Vector3D w_i;
+                double distToLight;
+                double pdf;
+                Vector3D illum = l->sample_L(hit_p, &w_i, &distToLight, &pdf);
+                Vector3D object_w_i = w2o*w_i;
+                if(object_w_i.z>0){
+                    Ray ray_out = Ray(hit_p, w_i,distToLight-EPS_F);
+                    ray_out.min_t = EPS_F;
+                    Intersection light;
+                    if(!bvh->intersect(ray_out, &light)){
+                            L_out += object_w_i.z*illum*isect.bsdf->f(w_out,object_w_i)/pdf/ns_area_light;
+                    }
+                }
             }
         }
     }
 
 
-  return Vector3D(1.0);
+  return L_out;
 
 }
 
@@ -152,8 +170,12 @@ Vector3D PathTracer::one_bounce_radiance(const Ray &r,
   // depending on `direct_hemisphere_sample`
     
 
-
-  return estimate_direct_lighting_hemisphere(r, isect);;
+    if(direct_hemisphere_sample){
+        return estimate_direct_lighting_hemisphere(r, isect);
+    }
+    else{
+        return estimate_direct_lighting_importance(r, isect);
+    }
 
 
 }
@@ -188,12 +210,10 @@ Vector3D PathTracer::est_radiance_global_illumination(const Ray &r) {
   //
   // REMOVE THIS LINE when you are ready to begin Part 3.
   
-//  if (!bvh->intersect(r, &isect))
-//    return envLight ? envLight->sample_dir(r) : L_out;
-    
-    
-    if(bvh->intersect(r, &isect)){
-        L_out = zero_bounce_radiance(r, isect);
+    if (!bvh->intersect(r, &isect)){
+        return  L_out;}
+  else{
+    L_out = zero_bounce_radiance(r, isect);
         L_out += one_bounce_radiance(r, isect);
     }
 
