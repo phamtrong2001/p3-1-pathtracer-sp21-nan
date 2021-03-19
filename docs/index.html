@@ -22,9 +22,7 @@
     <h2 align="middle">Eric Markley</h2>
 
     <div class="padded">
-        <p>Use this section to write an overview of the assignment. All of the text in your write-up should be <em>in your own words</em>. If you need to add additional HTML features to this document, you can search the <a href="http://www.w3schools.com/">http://www.w3schools.com/</a> website for instructions. To edit the HTML, you can just copy and paste existing chunks and fill in the text and image file names appropriately.</p>
-        <o>The website writeup is intended to be a self-contained walkthrough of the assignment: we want this to be a piece of work which showcases your understanding of relevant concepts through both mesh images as well as written explanations about what you did to complete each part of the assignment. Try to be as clear and organized as possible when writing about your own output files or extensions to the assignment. We want to understand what you've achieved and how you've done it!</p> 
-        <p>If you are well-versed in web development, feel free to ditch this template and make a better looking page. Just make sure that you include all the components as we've laid them out here. </p>
+        <p> The goal of this project was to create a ray tracer to realistically render scenes if given primitives and their surface properties.  In this project we examine the difference between uniform and importance sampling as well as the affect of the number of samples on noise in our scenes.  Both of these have deep connections to Monte Carlo estimation which lies at the heart of the project.  We also explored the differences between direct and indirect lighting.  Finally, we investigated many ways for rendering acceleration such as bounding volume hierarchies and sampling methods.  During this project I learned how to use Xcode's debugger fair efficiently.  I also was remind of the importance of typecasting when doing operations as well as the strong need for attention to detail. Too often I found I was forgetting to increment for loops or neglecting to take the square root of numbers when needed leading to difficult bugs to track down.  Overall I learned a lot during this project and enjoyed completing it. </p>
 
     <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
         <p>In Part 1 of this project we wrote the code for generating rays from our camera into our scene and testing intersections with both sphere and triangle primitives.  For the camera ray generation we first take in an x and y coordinate in image space.  We place this into a 4D vector, (x,y,z,h) where x and y are the inputs given, z=0, and h=1. By using homogenous coordinates we are able to both translate and scale our image space using matrix multiplication.  The matrix we create is an image to camera space transformation matrix.  After transforming our image space input into camera space, we then transform that output to world space using the given camera to world space transformation matrix.  Finally, we normalize the previous result to give us the direction of the ray of interest. This works because the camera is assumed to be at the (0,0,0) in world space.  The given origin and calculated direction are then used to generate a ray.  The ray's min_t and max_t values are set to nClip and fClip respectively.  This constrains the extent of our scene that is visible to the camera.</p>
@@ -138,19 +136,19 @@
 		<td>
                     <td align="middle">
                     <img src="../build/bunny_1_4.png" width="480px" />
-                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 4 sample per light</figcaption>
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 4 samples per light</figcaption>
 		</td>
                 </tr>
 		<tr>
 		<td>
                     <td align="middle">
                     <img src="../build/bunny_1_16.png" width="480px" />
-                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 16 sample per lights</figcaption>
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 16 samples per lights</figcaption>
                 </td>
 		<td>
                     <td align="middle">
                     <img src="../build/bunny_1_64.png" width="480px" />
-                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 64 sample per light</figcaption>
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 64 samples per light</figcaption>
 		</td>
                 </tr>
             </table>
@@ -275,13 +273,13 @@
                 <tr>
                     <td align="middle">
                     <img src="../build/spheres_1024_4_5.png" width="480px" />
-                    <figcaption align="middle">Global illumination with 1024 sample per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+                    <figcaption align="middle">Global illumination with 1024 samples per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
 		</tr>
             </table>
 	</div>
 
 	<h2 align="middle">Part 5: Adaptive Sampling</h2>
-	<p> Adaptive sampling allows us to stop sampling early if we have reach convergence for that pixel.  In order to to that we keep a running sum of the illuminance values we have calculated as well as a running sum of their squared values.  This allows us to compute whether the current mean falls within the 95 percent confidence interval of the true mean.  This is  </p> 
+	<p> Adaptive sampling allows us to stop sampling early if we have reach convergence for that pixel.  In order to to that we keep a running sum of the illuminance values we have calculated as well as a running sum of their squared values.  This quantities allow us to calculate the sample mean and sample standard deviation to be calculated.  We only calculate these statistics only every certain number of samples in order to save computation cost.  At the time of updating the sample mean and sample standard deviation we make the stopping comparison as given in the spec.  If it holds true we break the loop and return the number of samples taken so far as well as the illuminance value for that pixel.  This results in heterogenous per pixel sampling allowing for further acceleration. The results of our render using this technique as well as the per pixel sampling rater are shown below.</p>
 	<div align="center">
             <table style="width=100%">
                 <tr>
@@ -298,24 +296,6 @@
             </table>
         </div>
 
-
-        <p>Here is an example of how to include a simple formula:</p>
-        <p align="middle"><pre align="middle">a^2 + b^2 = c^2</pre></p>
-        <p>or, alternatively, you can include an SVG image of a LaTex formula.</p>
-        <p>This time it's your job to copy-paste in the rest of the sections :)</p>
-
-
-
-    <h2 align="middle">A Few Notes On Webpages</h2>
-        <p>Here are a few problems students have encountered in the past. You will probably encounter these problems at some point, so don't wait until right before the deadline to check that everything is working. Test your website on the instructional machines early!</p>
-        <ul>
-        <li>Your main report page should be called index.html.</li>
-        <li>Be sure to include and turn in all of the other files (such as images) that are linked in your report!</li>
-        <li>Use only <em>relative</em> paths to files, such as <pre>"./images/image.jpg"</pre>
-        Do <em>NOT</em> use absolute paths, such as <pre>"/Users/student/Desktop/image.jpg"</pre></li>
-        <li>Pay close attention to your filename extensions. Remember that on UNIX systems (such as the instructional machines), capitalization matters. <pre>.png != .jpeg != .jpg != .JPG</pre>
-        <li>Be sure to adjust the permissions on your files so that they are world readable. For more information on this please see this tutorial: <a href="http://www.grymoire.com/Unix/Permissions.html">http://www.grymoire.com/Unix/Permissions.html</a></li>
-        <li>And again, test your website on the instructional machines early!</li>
 </div>
 </body>
 </html>
