@@ -11,12 +11,15 @@
   </style> 
 <title>Your Name  |  CS 184</title>
 <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<script type="text/javascript" id="MathJax-script" async
+  src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js">
+</script>
 <link rel="stylesheet" type="text/css" href="style.css" media="screen" />
 </head>
 <body>
 <br />
 <h1 align="middle">Assignment 3: PathTracer</h1>
-    <h2 align="middle">Your Name</h2>
+    <h2 align="middle">Eric Markley</h2>
 
     <div class="padded">
         <p>Use this section to write an overview of the assignment. All of the text in your write-up should be <em>in your own words</em>. If you need to add additional HTML features to this document, you can search the <a href="http://www.w3schools.com/">http://www.w3schools.com/</a> website for instructions. To edit the HTML, you can just copy and paste existing chunks and fill in the text and image file names appropriately.</p>
@@ -24,16 +27,278 @@
         <p>If you are well-versed in web development, feel free to ditch this template and make a better looking page. Just make sure that you include all the components as we've laid them out here. </p>
 
     <h2 align="middle">Part 1: Ray Generation and Intersection</h2>
-        <p>Describe what you did in Part 1. etc...</p>
+        <p>In Part 1 of this project we wrote the code for generating rays from our camera into our scene and testing intersections with both sphere and triangle primitives.  For the camera ray generation we first take in an x and y coordinate in image space.  We place this into a 4D vector, (x,y,z,h) where x and y are the inputs given, z=0, and h=1. By using homogenous coordinates we are able to both translate and scale our image space using matrix multiplication.  The matrix we create is an image to camera space transformation matrix.  After transforming our image space input into camera space, we then transform that output to world space using the given camera to world space transformation matrix.  Finally, we normalize the previous result to give us the direction of the ray of interest. This works because the camera is assumed to be at the (0,0,0) in world space.  The given origin and calculated direction are then used to generate a ray.  The ray's min_t and max_t values are set to nClip and fClip respectively.  This constrains the extent of our scene that is visible to the camera.</p>
+	<p> After writing our ray generation function, we use it to sample the pixels on the image sensor.  We take in a sensor pixel's bottom left corner location and add random values sampled uniformly on 0 to 1 to both the x and y coordinate.  This ensures our rays pass through multiple parts of a single pixel allowing the integration of light over the whole pixel.  This location is then used to call the generate camera ray function mentioned in the previous paragraph.  From here we call the est_radiance_global_radiance function.  This gives us an estimate of the total amount of light falling on the sensor location.  We then use a Monte Carlo approach to integrate light over the whole sensor using multiple samples and return this value. </p> 
+	<p> Finally, we wrote code to solve for ray intersections with triangle and sphere primitives.  For the triangle primitives we used the Moller-Trumbore algorithm to get the intersection time and barycentric coordinates of the intersection.  We then used the barycentric coordinates to determine if the point was contained with the triangle of interest and return the appropriate boolean value.  This is the same test used in our rasterization project.  The ray's intersection time is updated as well as its normal during this step.  For the case of a sphere primitive, we solved the quadratic equation.  If the discriminant is greater than zero, there is an intersection.  The minimum root is taken to be the time of intersection and the normal is set to the normalized direction between the intersection point and origin of the sphere.  Below you can see some of the scenes we are able to render at this point. </p>
         <div align="center">
             <table style="width=100%">
                 <tr>
+		<td>
                     <td align="middle">
-                    <img src="images/example_image.png" width="480px" />
-                    <figcaption align="middle">Results Caption: my bunny is the bounciest bunny</figcaption>
+                    <img src="../build/CBempty.png" width="480px" />
+                    <figcaption align="middle">Normal Colored Empty Cornell Box</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/CBspheres.png" width="480px" />
+                    <figcaption align="middle">Normal Colored Cornell Box Containing Spheres</figcaption>
+                 </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/cow.png" width="480px" />
+                    <figcaption align="middle">A particularly chill cow</figcaption>
+                </td>
+		</tr>
+            </table>
+        </div>
+
+
+    <h2 align="middle">Part 2: Bounding Volume Hierarchy</h2>
+        <p> A bounding volume hierarchy (BVH) allows for a great reduction of intersection tests if implemented correctly.  A BVH is a tree where each node has a bounding box and the leaves have lists of primitive.  We begin with a bounding box that encloses all of the primitives in our scene.  The first step of is to split the primitives of the scene into two groups, the left and right nodes of our initial node.  If our ray of interest does not intersect the bounding box of a node we can safely ignore testing all of the primitives contained with in it.  It is easy to see how a BVH can dramatically	reduce the number of intersection tests.  The splitting of nodes is done recursively until each leaf node has fewer than a designated number of primitives contained with in it.  There are many options for how to split each node.  We ultimately choose split based on the median centroid location along the axis with the greatest extent.  To do this we calculate the the minimum and maximum x, y, and z values of the centroids in the node.  We then sort the primitives along the axis that was the longest.  Finally, we add the first half of the sorted list to the left node and the second half to the right node. Originally, we tried splitting using the average centroid location of the primitives in the node, but found this heuristic to be too slow when rendering.  Now that the BVH is constructed we are able to render both the Max Planck and Cornell Box Lucy scenes in under a second, both of which were not previously possible.  These are shown below.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/max.png" width="480px" />
+                    <figcaption align="middle">Max Planck: A man of tens of thousands of triangles</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/Lucy.png" width="480px" />
+                    <figcaption align="middle">Lucy: A woman of hundreds of thousands of triangles</figcaption>
+		</td>
                 </tr>
             </table>
         </div>
+	<p> We also qualitatively compared the rendering of simpler scenes with and without the use of a BVH.  The comparison is presented from least fierce to most fierce object. Actually, it is in in the order of number of primitives in the scene. The banana took .0720 seconds to render with an average of 1.586 intersection tests per ray with BVH and took 5.3492 seconds to render with an average of 597.5858 intersection tests per ray without BVH. The cow took .1595 seconds to render with an average of 3.479 intersection tests per ray with BVH and took 22.305 seconds to render with an average of 2537.1364 intersection tests per ray without BVH.  The dragon with took .1873 seconds to render with an average of 3.585 intersection tests per ray with BVH and took 1151.2452 seconds to render with and average of 35914.905 intersection tests per ray without BVH.  We see as the number of the primitives in the scene increases the importance of a BVH is increasingly important.  This is due to the direct relationship of rendering time with the number of ray intersection tests performed.  </p>
+	<div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/banana.png" width="480px" />
+                    <figcaption align="middle">Banana</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/cow.png" width="480px" />
+                    <figcaption align="middle">Cow</figcaption>
+                 </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/dragon.png" width="480px" />
+                    <figcaption align="middle">Dragon</figcaption>
+                </td>
+		</tr>
+            </table>
+        </div>
+
+	 <h2 align="middle">Part 3: Direct Illumination</h2>
+        <p> In this section we implement direct illumination.  Direct illumination is the light coming out of the light sources that directly hits the camera, as well as the light coming from the light sources that hits exactly one scene object before hitting the camera.  These two types of light are known as zero-bounce and one-bounce illumination, respectively.  Zero-bounce illumination is relatively easy to implement.  It consists of tracing rays into the scene and checking if their intersections points are lights sources via the get_emission function.  Again the zero-bounce illumination is gathered by integrating the light over each pixel using a Monte Carlo approach.  For one-bounce illumination, we cast a ray into the scene from the camera through the pixel of interest.  We then need to estimate this intersection point's contribution to the scene lighting.  To do this we must estimate the light arriving at this point.  To do this we use the intersection point as the origin and cast another ray into the scene.  At this point we must make a decision of how to choose the direction of this second ray.  One choice is to sampling the hemisphere around the normal of the intersection point uniformly.  This is known as direct lighting with uniform hemisphere sampling. This is what we implemented first.  We approximate the integral \(\frac{1}{N}\sum_{j=1}^N{\frac{f_r(p,w_j -> w_r)L_i(p,w_j)cos(\theta_j)}{p(w_j)}}\), where N is the number of samples per intersection point, \(p\) is our first intersection point, \(w_j\) is the ray from the camera, \(w_r\) is the ray from the intersection point, \(f_r\) is the evaluation of our BSDF at the first intersection, \(L_i\) is the light emission of the second intersection, \(\theta_j\) is the angle between the \(w_j\) and the object normal, and \(p(w_j)\) is the probability of that ray direction.  In this project the BSDF is only implemented for diffuse objects.  Consequently, it is constant with value \(\frac{albedo}{\pi}\). \(L_i\) is calculated using the bsdf.get_emission function at the second intersection point. Due to the normal of object space always being (0,0,1), \(cos(\theta_j)\) is simply the z component of \(w_j\).  Finally, the probability of each direction is uniform over the hemisphere and is therefor \(\frac{1}{2\pi}\).  Using this we are able to calculate the one-bounce radiance for uniform hemisphere sampling.  The other option for calculating the second ray direction is importance sampling.  In this case we no longer sample the hemisphere uniformly.  We attempt to apply a more useful probability model to our sampling of direction.  Assuming no obstructions, every ray direction that hits the a light source is given a positive probability and all other directions are given probability zero.  This ensures we are only sampling informative rays.  The remainder of the implementation of importance sampling is largely the same as uniform hemisphere sampling with two small changes.  \(p(w_j\) is not longer uniform and is given by the sampler function and \(L_i\) is taken to be the lights radiance if the ray does not intersect another scene object first and zero if it does.  By only sampling rays that have a chance of intersecting the light we are able to reduce noise by only taking informative samples. </p>
+	<p> Below we compare the difference between uniform and importance sampling.  The first pair of images clearly shows the superiority of importance sampling.  We use one sample per pixel and one sample per light source in both images.  The odds of the ray hitting a light source in the uniform case is extremely low in this set up, but using importance sampling we are able to ensure we hit a light unless an object in the scene is obstructing the ray.  This leads to an image with dramatically reduced noise. The second set of images is rendered using 64 samples per pixel and 32 samples per light.  We see that the uniform sampling performs better than the previous case, but still much worse than the importance sampling case.  This demonstrates that the importance sampling case converges at the expected value of our Monte Carlo integral faster than the uniform sampling case due to taking more informative samples. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1_1_h.png" width="480px" />
+                    <figcaption align="middle">Uniform Sampling: 1 sample per pixel, 1 sample per light</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1_1.png" width="480px" />
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 1 sample per light</figcaption>
+		</td>
+                </tr>
+		<tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_64_32_h.png" width="480px" />
+                    <figcaption align="middle">Uniform Sampling: 64 sample per pixel, 32 sample per lights</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_64_32.png" width="480px" />
+                    <figcaption align="middle">Importance Sampling: 64 sample per pixel, 32 sample per light</figcaption>
+		</td>
+                </tr>
+            </table>
+        </div>
+
+	<p> Finally we compare the results when using importance sampling with a fixed number of samples per pixel and variable number of samples per light.  We see that as the number of samples per light increases, the amount of noise in our image decreases.  This is particularly obvious in areas of soft shadows.  This is due to the use of a Monte Carlo approach.  Unbiased Monte Carlo estimators are equal to integrals in expectation, but have some variance.  We can think of the output of the Monte Carlo estimator as a random variable with a mean equal the integrals expectation and some variance.  As the number of samples increases per light the variance of our estimator decreases.  Variance can also be thought of as noise.  Therefor our image looks less noisy as we take more samples per light because we are reducing the variance of our Monte Carlo estimator. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1_1.png" width="480px" />
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 1 sample per light</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1_4.png" width="480px" />
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 4 sample per light</figcaption>
+		</td>
+                </tr>
+		<tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1_16.png" width="480px" />
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 16 sample per lights</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1_64.png" width="480px" />
+                    <figcaption align="middle">Importance Sampling: 1 sample per pixel, 64 sample per light</figcaption>
+		</td>
+                </tr>
+            </table>
+        </div>
+
+<h2 align="middle">Part 4: Global Illumination</h2>
+	<p> In this part of the project we implement global illumination.  This includes all of the light that reaches our camera after more than a single bounce as well as the light from direct illumination.  We implement this algorithm recursively.  We begin by initializing the light reaching our pixel as the one-bounce illumination and setting the ray passed to the function's depth as the max ray depth.  We then perform at least one indirect lighting bounce.  This is ensured by taking an indirect bounce when the ray depth is equal to the max ray depth.  The ray depth is decreased by one after each bounce.  In order to calculate the BSDF, the next ray, and its probability we use sampler_f.  This samples the hemisphere around the intersection normal with a cosine weighted distribution.  \(L_i\) is calculated by calling the at_least_one_bounce_illumination function recursively.  The cosine term of the lighting equation is calculated the same way as in previous parts.  The output is the summation over all bounces.  One other nuance is we randomly terminate indirect bounces using the Russian roulette technique. In our case we stop the recursion at each bounce after the first with probability .3 i.e. we have a continuation probability of .7. This prevents our estimate from being biased.  Note that we divide by this continuation probability at each bounce.  Below are some globally illuminated scenes.  The lighter shadows and color bleeding are two things to note about these scenes.</p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_1024_4_5.png" width="480px" />
+                    <figcaption align="middle">Globally illuminated spheres in a Cornell Box</figcaption>
+		<td>
+                    <td align="middle">
+                    <img src="../build/dragon_1024_4_5.png" width="480px" />
+                    <figcaption align="middle">Globally illuminated dragon in a Cornell Box</figcaption>
+                 </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1024_4_5.png" width="480px" />
+                    <figcaption align="middle">Globally illuminated spheres in a Cornell Box</figcaption>
+                </td>
+		</tr>
+            </table>
+        </div>
+        <p> Below we compare the direct illumination component and the indirect illumination components.  We can see the direct illumination components provides the majority of the shadows in the image as well as most of the brightness.  We also take note that no light reaches the ceiling in the direct illumination component.  The indirect illumination component accounts for all of the light on the ceiling and the coloring bleeding from the walls.  It also casts a secondary shadow of the spheres onto the colored walls. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_1024_4_1.png" width="480px" />
+                    <figcaption align="middle">Direct illumination of the spheres in Cornell Box</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_1024_4_5_i.png" width="480px" />
+                    <figcaption align="middle">Indirect illumination of the spheres in Cornell Box</figcaption>
+		</td>
+                </tr>
+            </table>
+        </div>
+	<p> Below we demonstrate the effects of varying the maximum number of ray bounces.  We see obvious transitions from zero-bounce to direct illumination and from direct illumination to direct illumination with indirect illumination.  After this transitions the differences between images become more subtle before ultimately converging. </p>
+        <div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1024_4_0.png" width="480px" />
+                    <figcaption align="middle">Global illumination with a max ray depth of 0.  This simply gives zero-bounce illumination.</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1024_4_1.png" width="480px" />
+                    <figcaption align="middle">Global illumination with a max ray depth of 1.  This gives us direct illumination</figcaption>
+		</td>
+                </tr>
+		<tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1024_4_2.png" width="480px" />
+                    <figcaption align="middle">Global illumination with a max ray depth of 2.  This finally introduces indirect illumination to our lighting in addition to direct illumination. We begin to see some color bleeding into the white parts of the scene due to this indirect illumination.</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_1024_4_3.png" width="480px" />
+                    <figcaption align="middle">Global illumination with a max ray depth of 3.  We see further bleeding of color and shadowed regions becoming much brighter.</figcaption>
+		</td>
+                </tr>
+            </table>
+            <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="../build/bunny_1024_4_100.png" width="480px" />
+                    <figcaption align="middle">Global illumination with a max ray depth of 100.  We note that the scene appears largely converge with significant color bleed onto the rabbit as well as lightning of the shadow.  We also note this image is slightly noisier than the last.</figcaption>
+		</tr>
+            </table>
+        </div>
+	<p> Finally we examine the effect of changing the number of pixels per sample.  As mentioned earlier, since we are using a Monte Carlo estimator to estimate the lighting integral, the more samples we take the less variance we have.  Eventually we shrink the variance dramatically, converging around the true value of the lighting integral.  This effect is demonstrated below. </p>
+	<div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_1_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 1 sample per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+                </td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_2_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 2 samples per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+		</td>
+                </tr>
+		<tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_4_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 4 samples per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+		</td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_8_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 8 samples per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+		</td>
+                </tr>
+		<tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_16_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 16 samples per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+		</td>
+		<td>
+                    <td align="middle">
+                    <img src="../build/spheres_64_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 64 samples per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+		</td>
+                </tr>
+            </table>
+	    <table style="width=100%">
+                <tr>
+                    <td align="middle">
+                    <img src="../build/spheres_1024_4_5.png" width="480px" />
+                    <figcaption align="middle">Global illumination with 1024 sample per pixel, 4 samples per light, and a max ray depth of 5.</figcaption>
+		</tr>
+            </table>
+	</div>
+
+	<h2 align="middle">Part 5: Adaptive Sampling</h2>
+	<p> Adaptive sampling allows us to stop sampling early if we have reach convergence for that pixel.  In order to to that we keep a running sum of the illuminance values we have calculated as well as a running sum of their squared values.  This allows us to compute whether the current mean falls within the 95 percent confidence interval of the true mean.  This is  </p> 
+	<div align="center">
+            <table style="width=100%">
+                <tr>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny.png" width="480px" />
+                    <figcaption align="middle">Globally illuminated bunny using adaptive sampling</figcaption>
+		<td>
+                    <td align="middle">
+                    <img src="../build/bunny_rate.png" width="480px" />
+                    <figcaption align="middle">Sampling rate for the image to the left</figcaption>
+                 </td>
+		</tr>
+            </table>
+        </div>
+
+
         <p>Here is an example of how to include a simple formula:</p>
         <p align="middle"><pre align="middle">a^2 + b^2 = c^2</pre></p>
         <p>or, alternatively, you can include an SVG image of a LaTex formula.</p>

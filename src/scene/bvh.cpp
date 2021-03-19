@@ -90,6 +90,7 @@ BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
   BBox bbox;
   int objects = 0;
   Vector3D avgCentroid;
+    float count = 0;
   for (auto p = start; p != end; p++) {
     BBox bb = (*p)->get_bbox();
     bbox.expand(bb);
@@ -102,18 +103,23 @@ BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
       maxx = ( center.x > maxx ? center.x: maxx );
       maxy = ( center.y > maxy ? center.y: maxy );
       maxz = ( center.z > maxz ? center.z: maxz );
+      count ++;
   }
     int axis;
-    if(maxx-minx > maxy-miny && maxx-minx > maxz-minz){
+    float middle = 0;
+    if(maxx-minx >= maxy-miny && maxx-minx >= maxz-minz){
         axis = 0;
+        middle = (maxx - minx)/2;
         std::sort(start, end, less_than_x());
     }
-    if(maxy-miny > maxx-minx && maxy-miny > maxz-minz){
+    else if(maxy-miny >= maxx-minx && maxy-miny >= maxz-minz){
         axis = 1;
+        middle = (maxy - miny)/2;
         std::sort(start, end, less_than_y());
     }
-    if(maxz-minz > maxy-miny && maxz-minz > maxx-minx){
+    else if(maxz-minz >= maxy-miny && maxz-minz >= maxx-minx){
         axis = 2;
+        middle = (maxz - minz)/2;
         std::sort(start, end, less_than_z());
     }
   avgCentroid = avgCentroid * 1/objects;
@@ -133,9 +139,12 @@ BVHNode *BVHAccel::construct_bvh(std::vector<Primitive *>::iterator start,
         float minAxis = 111111111.1;
         float centerAxis;
         auto q = start;
-        while((*q)->get_bbox().centroid()[axis]<avgCentroid[axis]){
+        int ii=0;
+//        while((*q)->get_bbox().centroid()[axis]<avgCentroid[axis]){
+        while(ii<count/2){
             lend = q;
             q++;
+            ii++;
             }
         
         if(lstart!=lend && lend !=rend){
@@ -191,7 +200,7 @@ bool BVHAccel::intersect(const Ray &ray, Intersection *i, BVHNode *node) const {
     else{
         bool hit1 = intersect(ray, i, node->l);
         bool hit2 = intersect(ray, i, node->r);
-        hit = hit1 || hit2;
+        hit = hit1 || hit2 || hit;
 
     }
   return hit;

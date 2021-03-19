@@ -169,7 +169,6 @@ Vector3D PathTracer::one_bounce_radiance(const Ray &r,
   // Returns either the direct illumination by hemisphere or importance sampling
   // depending on `direct_hemisphere_sample`
     
-
     if(direct_hemisphere_sample){
         return estimate_direct_lighting_hemisphere(r, isect);
     }
@@ -190,6 +189,24 @@ Vector3D PathTracer::at_least_one_bounce_radiance(const Ray &r,
   Vector3D w_out = w2o * (-r.d);
 
   Vector3D L_out(0, 0, 0);
+  L_out = one_bounce_radiance(r, isect);
+    double cpdf = .7;
+    if((r.depth >1 && (coin_flip(cpdf) || r.depth==max_ray_depth))){
+        Vector3D object_w_i;
+        double pdf;
+        Vector3D f = isect.bsdf->sample_f(w_out,&object_w_i,&pdf);
+        Vector3D w_i = o2w * object_w_i;
+        Ray next_ray = Ray(hit_p,w_i);
+        next_ray.min_t = EPS_F;
+        next_ray.depth = r.depth-1;
+        Intersection next_hit;
+        if(bvh->intersect(next_ray, &next_hit)){
+            L_out += f*at_least_one_bounce_radiance(next_ray, next_hit)*object_w_i.z/pdf/cpdf;
+        }
+    }
+            
+    
+  
 
 
 
@@ -214,7 +231,9 @@ Vector3D PathTracer::est_radiance_global_illumination(const Ray &r) {
         return  L_out;}
   else{
     L_out = zero_bounce_radiance(r, isect);
-        L_out += one_bounce_radiance(r, isect);
+      if(max_ray_depth!=0){
+        L_out += at_least_one_bounce_radiance(r, isect);
+      }
     }
 
 
@@ -237,21 +256,40 @@ void PathTracer::raytrace_pixel(size_t x, size_t y) {
   // TODO (Part 5):
   // Modify your implementation to include adaptive sampling.
   // Use the command line parameters "samplesPerBatch" and "maxTolerance"
-
   int num_samples = ns_aa;          // total samples to evaluate
   Vector2D origin = Vector2D(x, y); // bottom left corner of the pixel
   Vector3D sample = Vector3D(0,0,0);
+    float s1 = 0;
+    float s2 = 0;
+    float mu = 0;
+    float std = 0;
+    float I = 0;
+    float curSamples = 0;
     for(int ii=0; ii<num_samples; ii++){
+        curSamples += 1;
         Vector2D sampleLoc = origin + gridSampler->get_sample();
-        Vector3D pathColor = est_radiance_global_illumination(camera->generate_ray(sampleLoc.x/sampleBuffer.w, sampleLoc.y/sampleBuffer.h));
-        sample = sample + pathColor*1/num_samples;
+        Ray r = camera->generate_ray(sampleLoc.x/sampleBuffer.w, sampleLoc.y/sampleBuffer.h);
+        r.depth = max_ray_depth;
+        Vector3D pathColor = est_radiance_global_illumination(r);
+        sample += pathColor;
+        s1 += pathColor.illum();
+        s2 += pathColor.illum()*pathColor.illum();
+        if( int(curSamples) % samplesPerBatch == 0){
+            mu = s1/curSamples;
+            std = sqrt((1/(curSamples-1)*(s2-s1*s1/curSamples)));
+            I = std*1.96/sqrt(curSamples);
+            if(I<=mu*maxTolerance){
+                break;
+            }
+        }
+        
     }
     
   
 
 
-  sampleBuffer.update_pixel(sample, x, y);
-  sampleCountBuffer[x + y * sampleBuffer.w] = num_samples;
+  sampleBuffer.update_pixel(sample/curSamples, x, y);
+  sampleCountBuffer[x + y * sampleBuffer.w] = int(curSamples);
 
 
 }

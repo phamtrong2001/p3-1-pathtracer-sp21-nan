@@ -205,7 +205,7 @@ Ray Camera::generate_ray(double x, double y) const {
     transform[3] = Vector4D(-.5*xScale,-.5*yScale,-1,0);
     Vector4D cSpace = transform * rayIn;
     Vector3D cRay = Vector3D(cSpace[0],cSpace[1],cSpace[2]);
-    Ray rayOut = Ray(pos,c2w*cRay.unit());
+    Ray rayOut = Ray(pos,(c2w*cRay).unit());
     rayOut.min_t = nClip;
     rayOut.max_t = fClip;
     

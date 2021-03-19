@@ -51,7 +51,7 @@ bool Sphere::intersect(const Ray &r, Intersection *i) const {
     float a = dot(r.d,r.d);
     float b = dot(2*(r.o-o),r.d);
     float c = dot((r.o-o),(r.o-o))-r2;
-    if(b*b-4*a*c>=0){
+    if(b*b-4*a*c>0){
         float t1 = (-b + sqrt(b*b-4*a*c))/2*a;
         float t2 = (-b - sqrt(b*b-4*a*c))/2*a;
         float t = (t1 < t2) ? t1 : t2;
